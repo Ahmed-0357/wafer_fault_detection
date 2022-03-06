@@ -1,0 +1,10 @@
+*env*/**
+.idea*/**
+.vscode*/**
+*__pycache__*
+*/__pycache__/
+**/**/*.pyc
+*.pyc
+__pycache__/*
+
+training_batch_files
