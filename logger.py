@@ -14,7 +14,7 @@ def set_logger(logger, dir_name, file_name):
         class: logging class
     """
     
-    logger.setLevel(logging.INFO)  # set level
+    logger.setLevel(logging.DEBUG)  # set level
 
     if not os.path.exists(dir_name):  # directory check
         os.makedirs(dir_name)
