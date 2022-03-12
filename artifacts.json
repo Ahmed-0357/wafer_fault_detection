@@ -1,16 +1,16 @@
 {"logging": 
     {"dir": "logging", 
-        "files": 
-            {"main":"main.log", 
-            "data_ingestion": "data_ingestion.log"}
+    "files": 
+        {"main":"main.log", 
+        "data_ingestion": "data_ingestion.log"}
         },
 "ingestion":  
     {"batch_dir": "training_batch_files", 
     "schema": 
-    {"dir":"DSA_schema",
-    "files" :
-     {"train": "schema_training.json",
-    "pred": "schema_prediction.json"}                                 
+        {"dir":"DSA_schema",
+        "files" :
+            {"train": "schema_training.json",
+            "pred": "schema_prediction.json"}                                 
+            }
+        }
     }
-}
-}

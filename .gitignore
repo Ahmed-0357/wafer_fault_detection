@@ -6,3 +6,4 @@
 **/**/*.pyc
 *.pyc
 __pycache__/*
+logging
