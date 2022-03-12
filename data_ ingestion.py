@@ -2,6 +2,7 @@ import json
 import logging
 import os
 import re
+import shutil
 
 import pandas as pd
 
@@ -34,6 +35,7 @@ class DataIngestion:
         self.batch_dir = inges['batch_dir']
         self.schema_dir = inges['schema']['dir']
         self.process_type = process_type
+        self.good_files_dir = inges['temp_good_dir']
 
         # choose DSA schema file according to process type
         if self.process_type == 'train':
@@ -54,11 +56,13 @@ class DataIngestion:
         """validate if batch files match with client DSA agreement - naming convention, number of columns, columns datatype, full empty columns
 
         Raises:
+            Exception: raise exception batch files directory is empty
             Exception: raise exception if can not read a file via pandas
 
         Returns:
             list: list of good files which have passed all validation checks
         """
+        logger.debug('staring data validation!!')
         # len of date and time stamp according to DSA
         len_date_stamp = self.schema['LengthOfDateStampInFile']
         len_time_stamp = self.schema['LengthOfTimeStampInFile']
@@ -67,8 +71,14 @@ class DataIngestion:
         # column datatype
         dtype_columns = list(self.schema['ColName'].values())
 
-        self.validation_pass = []  # list of files passed the validation check
-        for file in os.listdir(self.batch_dir):
+        # raise error if batch dir is empty
+        list_files = os.listdir(self.batch_dir)
+        if len(list_files) == 0:
+            logger.error(f'"{self.batch_dir}" directory has no files')
+            raise Exception(f'"{self.batch_dir}" directory has no files')
+
+        validation_pass = []  # list of files passed the validation check
+        for file in list_files:
             # naming convention check
             # naming pattern
             pattern = '[wW]afer_\d{' + f'{len_date_stamp}' + \
@@ -123,11 +133,55 @@ class DataIngestion:
                             else:
                                 logger.debug(
                                     f'"{file}" passed empty columns check')
-                                self.validation_pass.append(file)
+                                validation_pass.append(file)
 
-        return self.validation_pass
+        logger.debug('data validation completed!!')
+        return validation_pass
 
-    def DataTransformation(self):
+    def DataTransformation(self, good_files):
+        """copy list of good files to a temporary folder, then replace None with NULL in each file for easy data insertion
+
+        Args:
+            good_files (list): list of good files that passed data validation checks
+
+        Raises:
+            Exception: raise exception if list of good files is empty
+            Exception: raise exception if can not read a file via pandas
+        """
+        logger.debug('starting data transformation!!')
+        # raise exception if no file in good files list
+        if len(good_files) == 0:
+            logger.error('no file in good_files list')
+            raise Exception('no file in good_files list')
+
+        # make temporary directory for good files
+        if not os.path.exists(self.good_files_dir):  # directory check
+            os.makedirs(self.good_files_dir)
+        logger.debug('created temporary directory for good files')
+
+        # copy files to the temporary directory
+        for file in good_files:
+            original_loc = os.path.join(self.batch_dir, file)
+            target_loc = os.path.join(self.good_files_dir, file)
+            shutil.copyfile(original_loc, target_loc)
+            logger.debug(f'copied "{file}" file to good files folder')
+
+        # replace None values with Null for easy data insertion
+        for file in os.listdir(self.good_files_dir):
+            # open batch file
+            try:
+                df = pd.read_csv(os.path.join(self.good_files_dir, file))
+            except Exception:
+                logger.error(f'"{file}"can not be read with pandas')
+                raise Exception(f'"{file}"can not be read with pandas')
+            else:
+                df.fillna('NULL', inplace=True)
+                df.to_csv(os.path.join(self.good_files_dir, file), index=False)
+                logger.debug(f'replaced none with null in file "{file}"')
+
+        logger.debug('data transformation completed!!')
+
+    def DataInsertion(self):
         pass
 
 
@@ -135,3 +189,4 @@ if __name__ == '__main__':
     data_inges = DataIngestion(process_type='train')
     good_files = data_inges.data_validation()
     print(f'\nGood Files: {good_files}')
+    data_inges.DataTransformation(good_files)

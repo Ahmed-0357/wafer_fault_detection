@@ -11,6 +11,7 @@
         "files" :
             {"train": "schema_training.json",
             "pred": "schema_prediction.json"}                                 
-            }
+            },
+    "temp_good_dir": "good_files"
         }
     }
