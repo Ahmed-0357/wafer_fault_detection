@@ -20,6 +20,17 @@
         "tables": 
             {"train": "train",
             "pred":"pred"}
+            },
+    "output":
+        {"folders":
+            {"train": "training_data",
+            "pred": "prediction_data"
+            },
+        "files": 
+            {"train": "train.csv",
+            "pred": "prediction.csv"
+                }
             }
-        }
     }
+
+}

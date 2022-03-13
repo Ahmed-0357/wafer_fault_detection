@@ -7,4 +7,6 @@
 *.pyc
 __pycache__/*
 logging
-good_files
+project_database
+training_data
+prediction_data

@@ -44,10 +44,14 @@ class DataIngestion:
             self.batch_dir = inges['batch_dir_train']
             self.schema_file = inges['schema']['files']['train']
             self.db_table_name = inges['database']['tables']['train']
+            self.export_folder = inges['output']['folders']['train']
+            self.export_file_name = inges['output']['files']['train']
         elif self.process_type == 'pred':
             self.batch_dir = inges['batch_dir_pred']
             self.schema_file = inges['schema']['files']['pred']
             self.db_table_name = inges['database']['tables']['pred']
+            self.export_folder = inges['output']['folders']['pred']
+            self.export_file_name = inges['output']['files']['pred']
         else:
             logger.error(
                 'Unknown process type. Process type should be either "train" or "pred"')
@@ -188,6 +192,11 @@ class DataIngestion:
         logger.debug('data transformation completed!!')
 
     def DataInsertion(self):
+        """insert the content of files in the good folder to wafer.db 
+
+        Raises:
+            Exception: raise exception if can not read a file via pandas
+        """
         logger.debug('starting data insertion!!')
         # make db directory
         if not os.path.exists(self.db_dir):  # directory check
@@ -247,10 +256,47 @@ class DataIngestion:
 
         logger.debug('data insertion completed!!')
 
+    def export_table_content(self):
+        """export table content for either training or prediction 
+        """
+        # data validation
+        good_files = self.data_validation()
+        # data trainsformation
+        self.DataTransformation(good_files)
+        # data insertion
+        self.DataInsertion()
+
+        # get column names
+        cols_names = list(self.schema['ColName'].keys())
+
+        # connect to db create courser
+        conn = sqlite3.connect(os.path.join(self.db_dir, self.db_name))
+        cursor = conn.cursor()
+        logger.debug(f'established connect with "{self.db_name}"')
+
+        # query the database
+        with conn:
+            cursor.execute(
+                f"""SELECT * from {self.db_table_name}""")
+            results = cursor.fetchall()
+            logger.debug('select query run successfully')
+
+        # make output directory
+        if not os.path.exists(self.export_folder):  # directory check
+            os.makedirs(self.export_folder)
+        logger.debug(f'created "{self.export_folder}" directory')
+
+        # save output results to csv
+        df = pd.DataFrame(results)
+        df.columns = cols_names
+        df.to_csv(os.path.join(self.export_folder,
+                  self.export_file_name), index=False)
+        logger.debug(f'"{self.export_file_name}" folder is saved successfully')
+
+        # close db connection
+        conn.close()
+
 
 if __name__ == '__main__':
     data_inges = DataIngestion(process_type='train')
-    good_files = data_inges.data_validation()
-    print(f'\nGood Files: {good_files}')
-    data_inges.DataTransformation(good_files)
-    data_inges.DataInsertion()
+    data_inges.export_table_content()
