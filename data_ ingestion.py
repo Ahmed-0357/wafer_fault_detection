@@ -3,6 +3,7 @@ import logging
 import os
 import re
 import shutil
+import sqlite3
 
 import pandas as pd
 
@@ -32,16 +33,21 @@ class DataIngestion:
         Raises:
             Exception: raise exception when passing unknown process type
         """
-        self.batch_dir = inges['batch_dir']
         self.schema_dir = inges['schema']['dir']
-        self.process_type = process_type
         self.good_files_dir = inges['temp_good_dir']
+        self.db_dir = inges['database']['dir']
+        self.db_name = inges['database']['db_name']
+        self.process_type = process_type
 
-        # choose DSA schema file according to process type
+        # choose DSA schema file and db table name according to process type
         if self.process_type == 'train':
+            self.batch_dir = inges['batch_dir_train']
             self.schema_file = inges['schema']['files']['train']
+            self.db_table_name = inges['database']['tables']['train']
         elif self.process_type == 'pred':
+            self.batch_dir = inges['batch_dir_pred']
             self.schema_file = inges['schema']['files']['pred']
+            self.db_table_name = inges['database']['tables']['pred']
         else:
             logger.error(
                 'Unknown process type. Process type should be either "train" or "pred"')
@@ -113,7 +119,7 @@ class DataIngestion:
                                 if ('object' in dtypes_cols_df[i]) and ('varchar' in dtype_columns[i]):
                                     type_pass.append('pass')
                             elif i == (len(dtypes_cols_df)-1):
-                                if ('int' in dtypes_cols_df[i]) and ('Integer' in dtype_columns[i]):
+                                if (('int' in dtypes_cols_df[i]) or ('float' in dtypes_cols_df[i])) and (('Integer' in dtype_columns[i]) or ('float' in dtype_columns[i])):
                                     type_pass.append('pass')
                             else:
                                 if (('int' in dtypes_cols_df[i]) or ('float' in dtypes_cols_df[i])) and ('float' in dtype_columns[i]):
@@ -139,7 +145,7 @@ class DataIngestion:
         return validation_pass
 
     def DataTransformation(self, good_files):
-        """copy list of good files to a temporary folder, then replace None with NULL in each file for easy data insertion
+        """copy good files to a temporary folder, then replace None with NULL in each file for easy data insertion
 
         Args:
             good_files (list): list of good files that passed data validation checks
@@ -182,7 +188,64 @@ class DataIngestion:
         logger.debug('data transformation completed!!')
 
     def DataInsertion(self):
-        pass
+        logger.debug('starting data insertion!!')
+        # make db directory
+        if not os.path.exists(self.db_dir):  # directory check
+            os.makedirs(self.db_dir)
+        # connect to db create courser
+        conn = sqlite3.connect(os.path.join(self.db_dir, self.db_name))
+        cursor = conn.cursor()
+        logger.debug(f'established connect with "{self.db_name}"')
+
+        # create table
+        cols_names = list(self.schema['ColName'].keys())
+        cols_dtype = list(self.schema['ColName'].values())
+        # change cols dtype to sqlite3 type
+        cols_dtype = list(
+            map(lambda x: x.replace('varchar', 'text'), cols_dtype))
+        cols_dtype = list(
+            map(lambda x: x.replace('float', 'real'), cols_dtype))
+
+        cols_names_dtype = [f'"{i}" {j}' for i,
+                            j in zip(cols_names, cols_dtype)]
+        cols_names_dtype = ", ".join(cols_names_dtype)
+
+        try:
+            with conn:
+                cursor.execute(
+                    f"""CREATE TABLE {self.db_table_name} ({cols_names_dtype})""")
+            logger.debug(f'created "{self.db_table_name}" table')
+        except sqlite3.OperationalError:
+            logger.warning(f'"{self.db_table_name}" table already exists')
+
+        # insert data to db
+        for file in os.listdir(self.good_files_dir):
+            # open batch file
+            try:
+                df = pd.read_csv(os.path.join(self.good_files_dir, file))
+            except Exception:
+                logger.error(f'"{file}"can not be read with pandas')
+                raise Exception(f'"{file}"can not be read with pandas')
+            else:
+                for row in range(len(df)):
+                    values_to_insert = df.iloc[row, :].to_numpy()
+                    values_to_insert = [str(i) for i in values_to_insert]
+                    values_ques = ', '.join(
+                        ['?' for _ in range(len(values_to_insert))])
+                    try:
+                        with conn:
+                            cursor.execute(
+                                f"""INSERT INTO {self.db_table_name} VALUES ({values_ques})""", values_to_insert)
+                    except Exception:
+                        logger.warning(
+                            f'row num {row+1} in file "{file}" can not be inserted')
+                logger.debug(f'"{file}" data has been inserted to the db')
+
+        # delete the temporary good files folder
+        shutil.rmtree(self.good_files_dir)
+        logger.debug('delete good files folder')
+
+        logger.debug('data insertion completed!!')
 
 
 if __name__ == '__main__':
@@ -190,3 +253,4 @@ if __name__ == '__main__':
     good_files = data_inges.data_validation()
     print(f'\nGood Files: {good_files}')
     data_inges.DataTransformation(good_files)
+    data_inges.DataInsertion()

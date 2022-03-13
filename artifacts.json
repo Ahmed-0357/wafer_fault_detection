@@ -5,13 +5,21 @@
         "data_ingestion": "data_ingestion.log"}
         },
 "ingestion":  
-    {"batch_dir": "training_batch_files", 
+    {"batch_dir_train": "training_batch_files", 
+    "batch_dir_pred": "prediction_batch_files", 
     "schema": 
         {"dir":"DSA_schema",
         "files" :
             {"train": "schema_training.json",
             "pred": "schema_prediction.json"}                                 
             },
-    "temp_good_dir": "good_files"
+    "temp_good_dir": "good_files",
+    "database": 
+        {"dir": "project_database",
+        "db_name": "wafer.db",
+        "tables": 
+            {"train": "train",
+            "pred":"pred"}
+            }
         }
     }

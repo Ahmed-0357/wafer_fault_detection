@@ -8,3 +8,4 @@
 __pycache__/*
 logging
 good_files
+prediction_batch_files
