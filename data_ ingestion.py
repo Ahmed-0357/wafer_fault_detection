@@ -148,7 +148,7 @@ class DataIngestion:
         logger.debug('data validation completed!!')
         return validation_pass
 
-    def DataTransformation(self, good_files):
+    def datatransformation(self, good_files):
         """copy good files to a temporary folder, then replace None with NULL in each file for easy data insertion
 
         Args:
@@ -191,7 +191,7 @@ class DataIngestion:
 
         logger.debug('data transformation completed!!')
 
-    def DataInsertion(self):
+    def datainsertion(self):
         """insert the content of files in the good folder to wafer.db 
 
         Raises:
@@ -251,7 +251,7 @@ class DataIngestion:
                 logger.debug(f'"{file}" data has been inserted to the db')
 
         # delete the temporary good files folder
-        shutil.rmtree(self.good_files_dir)
+        shutil.rmtree(self.good_files_dir, ignore_errors=True)
         logger.debug('delete good files folder')
 
         logger.debug('data insertion completed!!')
@@ -262,9 +262,9 @@ class DataIngestion:
         # data validation
         good_files = self.data_validation()
         # data trainsformation
-        self.DataTransformation(good_files)
+        self.datatransformation(good_files)
         # data insertion
-        self.DataInsertion()
+        self.datainsertion()
 
         # get column names
         cols_names = list(self.schema['ColName'].keys())

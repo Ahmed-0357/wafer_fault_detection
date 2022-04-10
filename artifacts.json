@@ -2,8 +2,10 @@
     {"dir": "logging", 
     "files": 
         {"main":"main.log", 
-        "data_ingestion": "data_ingestion.log"}
+        "data_ingestion": "data_ingestion.log",
+        "data_preprocessing": "data_preprocessing.log"}
         },
+
 "ingestion":  
     {"batch_dir_train": "training_batch_files", 
     "batch_dir_pred": "prediction_batch_files", 
@@ -31,6 +33,9 @@
             "pred": "prediction.csv"
                 }
             }
-    }
+    },
+
+"preprocessing": ""
+    
 
 }
