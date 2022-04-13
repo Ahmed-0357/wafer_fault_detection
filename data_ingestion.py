@@ -28,7 +28,7 @@ class DataIngestion:
         """instantiate data ingestion class
 
         Args:
-            process_type (str, optional): type of data ingestion (training, prediction). Defaults to 'train'.
+            process_type (str, optional): type of data ingestion (training, pred). Defaults to 'train'.
 
         Raises:
             Exception: raise exception when passing unknown process type
@@ -219,13 +219,27 @@ class DataIngestion:
                             j in zip(cols_names, cols_dtype)]
         cols_names_dtype = ", ".join(cols_names_dtype)
 
-        try:
-            with conn:
-                cursor.execute(
-                    f"""CREATE TABLE {self.db_table_name} ({cols_names_dtype})""")
-            logger.debug(f'created "{self.db_table_name}" table')
-        except sqlite3.OperationalError:
-            logger.warning(f'"{self.db_table_name}" table already exists')
+        if self.process_type == 'train':
+            try:
+                with conn:
+                    cursor.execute(
+                        f"""CREATE TABLE {self.db_table_name} ({cols_names_dtype})""")
+                logger.debug(f'created "{self.db_table_name}" table')
+            except sqlite3.OperationalError:
+                logger.warning(f'"{self.db_table_name}" table already exists')
+        else:  # prediction
+            try:
+                with conn:
+                    cursor.execute(
+                        f"""CREATE TABLE {self.db_table_name} ({cols_names_dtype})""")
+                logger.debug(f'created "{self.db_table_name}" table')
+            except sqlite3.OperationalError:
+                with conn:
+                    cursor.execute(f"""DROP TABLE {self.db_table_name}""")
+                    cursor.execute(
+                        f"""CREATE TABLE {self.db_table_name} ({cols_names_dtype})""")
+                logger.warning(
+                    f'dropped "{self.db_table_name}" table and recreated it')
 
         # insert data to db
         for file in os.listdir(self.good_files_dir):

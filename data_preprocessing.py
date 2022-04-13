@@ -1,6 +1,7 @@
 import json
 import logging
 import os
+import pickle
 
 import pandas as pd
 
@@ -16,7 +17,7 @@ with open("artifacts.json", "r") as f:
     train_location = os.path.join(
         output_artifacts['folders']['train'], output_artifacts['files']['train'])
     pred_location = os.path.join(
-        output_artifacts['folders']['train'], output_artifacts['files']['pred'])
+        output_artifacts['folders']['pred'], output_artifacts['files']['pred'])
 
 
 # set logger
@@ -25,10 +26,23 @@ logger = set_logger(logger, log['dir'], log['files']['data_preprocessing'])
 
 
 class DataPreprocessor:
-    #! remomber to retrieve pandad profiling hml summary and display it in the streamlit app
-    def __init__(self, process_type='train', eda_report=True):
+    """data preprocessing includes data cleaning, train_test split, missing data imputation and features scaling
+    """
+
+    def __init__(self, process_type='train'):
+        """instantiaion of data preprocessing class
+
+        Args:
+            process_type (str, optional): process type can be either train or pred. Defaults to 'train'.
+        """
         self.process_type = process_type
-        self.eda_report = eda_report
+        self.prepro_dir = data_prepro['dir']
+        self.zero_std_cols = data_prepro['files']['removed_cols']
+
+        # make preprocessing dir
+        if not os.path.exists(self.prepro_dir):  # directory check
+            os.makedirs(self.prepro_dir)
+        logger.debug('created for_preprocessing directory')
 
     def read_dataset(self):
         """load the training/prediction dataset
@@ -79,7 +93,33 @@ class DataPreprocessor:
 
         # remove columns with single value
         if self.process_type == 'train':
-            pass
+            # calculate std value for the features
+            cols_std = self.data.iloc[:, :-1].std().to_dict()
+            cols_removed = []
+            for col, std_v in zip(cols_std.keys(), cols_std.values()):
+                if std_v == 0:
+                    cols_removed.append(col)
+                    del self.data[col]
+                    logger.debug(
+                        f'removed "{col}" column from the train data because it has zero std')
+            logger.debug(
+                f'total of {len(cols_removed)} columns has been removed from training data')
+            # save zero std cols
+            with open(os.path.join(self.prepro_dir, self.zero_std_cols), 'wb') as f:
+                pickle.dump(cols_removed, f)
+                logger.debug('saved removed columns')
+        else:
+            # load zero std cols
+            with open(os.path.join(self.prepro_dir, self.zero_std_cols), 'rb') as f:
+                cols_removed = pickle.load(f)
+                for col in cols_removed:
+                    del self.data[col]
+                    logger.debug(
+                        f'removed "{col}" column from the prediction data because it has zero std')
+                logger.debug(
+                    f'total of {len(cols_removed)} columns has been removed from prediction data')
+
+        logger.debug('successfully completed data cleaning!!')
 
 
 if __name__ == '__main__':

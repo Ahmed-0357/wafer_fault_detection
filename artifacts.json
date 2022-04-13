@@ -35,7 +35,10 @@
             }
     },
 
-"preprocessing": ""
+"preprocessing": 
+    {"dir":"for_preprocessing",
+    "files" :
+        {"removed_cols": "zero_std_cols.pickle",
+        "imputer_model": ""}}
     
-
 }
