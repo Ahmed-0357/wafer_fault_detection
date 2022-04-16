@@ -28,7 +28,7 @@ class DataIngestion:
         """instantiate data ingestion class
 
         Args:
-            process_type (str, optional): type of data ingestion (training, pred). Defaults to 'train'.
+            process_type (str, optional): type of data ingestion (train, pred). Defaults to 'train'.
 
         Raises:
             Exception: raise exception when passing unknown process type
