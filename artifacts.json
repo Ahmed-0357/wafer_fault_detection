@@ -3,7 +3,8 @@
     "files": 
         {"main":"main.log", 
         "data_ingestion": "data_ingestion.log",
-        "data_preprocessing": "data_preprocessing.log"}
+        "data_preprocessing": "data_preprocessing.log",
+        "semi_sv_modeling": "semi_sv_modeling.log"}
         },
 
 "ingestion":  
@@ -36,7 +37,7 @@
     },
 
 "preprocessing": 
-    {"dir":"for_preprocessing",
+    {"dir":"preprocessing",
     "files" :
         {"removed_cols": "zero_std_cols.pickle",
         "data_imputer": "imputer.pickle",
@@ -51,6 +52,15 @@
             "pred_raw": "pred_raw.csv",
             "pred_prepro": "pred_preprocessed.csv"}
         }
+    },
+
+"modeling": 
+    {"dir":"modeling",
+    "files" :
+        {"kmeans_elbow_method": "elbow_method.pickle",
+        "clustering_model": "kmeans.pickle",
+        "": ""}
+
     }
     
 }

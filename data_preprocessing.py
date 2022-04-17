@@ -55,7 +55,7 @@ class DataPreprocessor:
         # make preprocessing dir
         if not os.path.exists(self.prepro_dir):  # directory check
             os.makedirs(self.prepro_dir)
-        logger.debug('created for_preprocessing directory')
+        logger.debug('created preprocessing directory')
 
     def read_dataset(self):
         """load the training/prediction dataset
@@ -82,11 +82,11 @@ class DataPreprocessor:
             self.data_raw = self.data.copy()
         except Exception:
             logger.exception(
-                'cloud not manage to find the training/prediction data set ')
+                'cloud not manage to find the training/prediction dataset')
             raise Exception(
-                'cloud not manage to find the training/prediction data set')
+                'cloud not manage to find the training/prediction dataset')
         else:
-            logger.debug('successfully load the dataset!!')
+            logger.debug('successfully loaded the dataset!!')
 
     def data_cleaning(self):
         """training dataset cleaning includes removing wafer column, removing duplicates rows, fix output column labeling, removing columns with single values.

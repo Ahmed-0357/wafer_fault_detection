@@ -68,9 +68,6 @@ class DataIngestion:
         Raises:
             Exception: raise exception batch files directory is empty
             Exception: raise exception if can not read a file via pandas
-
-        Returns:
-            list: list of good files which have passed all validation checks
         """
         logger.debug('staring data validation!!')
         # len of date and time stamp according to DSA
@@ -87,7 +84,7 @@ class DataIngestion:
             logger.error(f'"{self.batch_dir}" directory has no files')
             raise Exception(f'"{self.batch_dir}" directory has no files')
 
-        validation_pass = []  # list of files passed the validation check
+        self.good_files = []  # list of files passed the validation check
         for file in list_files:
             # naming convention check
             # naming pattern
@@ -143,16 +140,12 @@ class DataIngestion:
                             else:
                                 logger.debug(
                                     f'"{file}" passed empty columns check')
-                                validation_pass.append(file)
+                                self.good_files.append(file)
 
         logger.debug('data validation completed!!')
-        return validation_pass
 
-    def datatransformation(self, good_files):
+    def datatransformation(self):
         """copy good files to a temporary folder, then replace None with NULL in each file for easy data insertion
-
-        Args:
-            good_files (list): list of good files that passed data validation checks
 
         Raises:
             Exception: raise exception if list of good files is empty
@@ -160,7 +153,7 @@ class DataIngestion:
         """
         logger.debug('starting data transformation!!')
         # raise exception if no file in good files list
-        if len(good_files) == 0:
+        if len(self.good_files) == 0:
             logger.error('no file in good_files list')
             raise Exception('no file in good_files list')
 
@@ -170,7 +163,7 @@ class DataIngestion:
         logger.debug('created temporary directory for good files')
 
         # copy files to the temporary directory
-        for file in good_files:
+        for file in self.good_files:
             original_loc = os.path.join(self.batch_dir, file)
             target_loc = os.path.join(self.good_files_dir, file)
             shutil.copyfile(original_loc, target_loc)
@@ -274,9 +267,9 @@ class DataIngestion:
         """export table content for either training or prediction 
         """
         # data validation
-        good_files = self.data_validation()
+        self.data_validation()
         # data trainsformation
-        self.datatransformation(good_files)
+        self.datatransformation()
         # data insertion
         self.datainsertion()
 
@@ -314,3 +307,4 @@ class DataIngestion:
 if __name__ == '__main__':
     data_inges = DataIngestion(process_type='train')
     data_inges.export_table_content()
+    print(data_inges.good_files)
