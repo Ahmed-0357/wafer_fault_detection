@@ -57,9 +57,8 @@
 "modeling": 
     {"dir":"modeling",
     "files" :
-        {"kmeans_elbow_method": "elbow_method.pickle",
-        "clustering_model": "kmeans.pickle",
-        "": ""}
+        {"clustering_model": "kmeans.pickle",
+        "classification_model": ""}
 
     }
     
