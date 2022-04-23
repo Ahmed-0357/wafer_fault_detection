@@ -150,7 +150,7 @@ class DataPreprocessor:
         logger.debug('successfully completed data cleaning!!')
 
     def data_split(self):
-        """train test split of the training data
+        """train test split of the training data (80 to 20)
         """
         logger.debug("starting data splitting!!")
         if self.process_type == 'train':
@@ -237,7 +237,7 @@ class DataPreprocessor:
         logger.debug("completed features scaling!!")
 
     def run(self):
-        """run all the main function for data preprocessing and save the data for the next module
+        """run all the main functions for data preprocessing and save the data for the next module
         """
         # read the dataset
         self.read_dataset()

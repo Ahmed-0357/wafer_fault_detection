@@ -58,8 +58,8 @@
     {"dir":"modeling",
     "files" :
         {"clustering_model": "kmeans.pickle",
-        "classification_model": ""}
-
+        "classification_model": "catboost.dump",
+        "probability_cutoff": "probability_cutoff.pickle"}
     }
     
 }
