@@ -150,7 +150,7 @@ class DataPreprocessor:
         logger.debug('successfully completed data cleaning!!')
 
     def data_split(self):
-        """train test split of the training data (80 to 20)
+        """train test split of the training data (70 to 30)
         """
         logger.debug("starting data splitting!!")
         if self.process_type == 'train':

@@ -72,7 +72,7 @@ class SemiSV:
         """
         logger.debug('starting clustering!!')
         # range of n_clusters
-        self.n_clusters_hp = [i for i in range(1, 2)]
+        self.n_clusters_hp = [i for i in range(1, 4)]
         self.wcss = []  # within cluster summation square
         # run hp optimization
         for n in self.n_clusters_hp:
@@ -206,11 +206,11 @@ class SemiSV:
 
             # get propability cutoff which yields false negative rate of 1%
             try:
-                thre_fnr = select_threshold(c_model,
-                                            data=val_pool,
-                                            FNR=0.01)
+                thre_fnr = round(select_threshold(c_model,
+                                                  data=val_pool,
+                                                  FNR=0.01), 3)
             except Exception:
-                thre_fnr = 0.5
+                thre_fnr = 0.500
                 logger.warning(
                     'could not find FNR threshold, thus it was set to 0.5')
 
@@ -227,12 +227,16 @@ class SemiSV:
             y_train = data_train.iloc[:, -1].to_numpy()
             y_test = data_test.iloc[:, -1].to_numpy()
 
-            prec_train = eval_metric(y_train, train_pred, 'Precision')
-            prec_test = eval_metric(y_test, test_pred, 'Precision')
-            recall_train = eval_metric(y_train, train_pred, 'Recall')
-            recall_test = eval_metric(y_test, test_pred, 'Recall')
+            prec_train = round(eval_metric(
+                y_train, train_pred, 'Precision')[0], 3)
+            prec_test = round(eval_metric(
+                y_test, test_pred, 'Precision')[0], 3)
+            recall_train = round(eval_metric(
+                y_train, train_pred, 'Recall')[0], 3)
+            recall_test = round(eval_metric(y_test, test_pred, 'Recall')[0], 3)
             self.classification_metrices[f'cluster_{c}_model'] = {'precision': {
                 'train': prec_train, 'test': prec_test}, 'recall': {'train': recall_train, 'test': recall_test}}
+
             logger.debug(f'calculated evaluation metrics for cluster {c}')
 
             # save optimized model
@@ -240,6 +244,7 @@ class SemiSV:
                 self.modeling_dir, f'{c}_{self.classification_model_name}'))
             logger.debug(f'saved the classification model for cluster {c}')
 
+        print(self.classification_metrices)
         # save prob_cutoff
         with open(os.path.join(self.modeling_dir, self.prob_cutoff_name), 'wb') as f:
             pickle.dump(self.prob_cutoff, f)
