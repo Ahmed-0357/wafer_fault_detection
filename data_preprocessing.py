@@ -29,7 +29,7 @@ logger = set_logger(logger, log['dir'], log['files']['data_preprocessing'])
 
 
 class DataPreprocessor:
-    """data preprocessing includes data cleaning, train_test split, missing data imputation and features scaling
+    """data preprocessing includes data cleaning, train, validation and test split, missing data imputation and features scaling
     """
 
     def __init__(self, process_type='train'):
@@ -48,8 +48,9 @@ class DataPreprocessor:
         self.imputer_name = data_prepro['files']['data_imputer']
         self.scaler_name = data_prepro['files']['data_scaler']
 
-        self.train_split_name = data_prepro['output_files']['train']['test']['train_split']
-        self.test_split_name = data_prepro['output_files']['train']['test']['test_split']
+        self.train_split_name = data_prepro['output_files']['train']['splits']['train_split']
+        self.val_split_name = data_prepro['output_files']['train']['splits']['val_split']
+        self.test_split_name = data_prepro['output_files']['train']['splits']['test_split']
         self.pred_prepro_name = data_prepro['output_files']['pred']['pred_prepro']
 
         # make preprocessing dir
@@ -150,25 +151,34 @@ class DataPreprocessor:
         logger.debug('successfully completed data cleaning!!')
 
     def data_split(self):
-        """train test split of the training data (70 to 30)
+        """train, validation and test split of the training data (60%, 20%, 20%)
         """
         logger.debug("starting data splitting!!")
         if self.process_type == 'train':
             col_names = self.data.columns
+            # get testing data
             X_train, X_test, y_train, y_test = train_test_split(
-                self.data.iloc[:, :-1], self.data.iloc[:, -1], test_size=0.3, stratify=self.data.iloc[:, -1])
+                self.data.iloc[:, :-1], self.data.iloc[:, -1], test_size=0.2, stratify=self.data.iloc[:, -1])
+            # get training and validation data
+            X_train, X_val, y_train, y_val = train_test_split(
+                X_train, y_train, test_size=0.25, stratify=y_train)
 
             # save train split data
             self.train_data = pd.DataFrame(X_train)
             self.train_data[col_names[-1]] = y_train
             self.train_data.columns = col_names
 
+            # save val split data
+            self.val_data = pd.DataFrame(X_val)
+            self.val_data[col_names[-1]] = y_val
+            self.val_data.columns = col_names
+
             # save test split data
             self.test_data = pd.DataFrame(X_test)
             self.test_data[col_names[-1]] = y_test
             self.test_data.columns = col_names
             logger.debug(
-                f"length of training data: {len(self.train_data)} - length of testing data: {len(self.test_data)}")
+                f"length of training data: {len(self.train_data)} - length of validation data: {len(self.val_data)} - length of testing data: {len(self.test_data)}")
         else:
             self.pred_data = self.data.copy()
             logger.debug(f"length of prediction data: {len(self.pred_data)}")
@@ -185,12 +195,15 @@ class DataPreprocessor:
             imputer = KNNImputer(n_neighbors=5, weights='distance')
             imputer.fit(self.train_data.iloc[:, :-1])
             logger.debug('trained knn imputer')
-            # fill missing in train and test data
+            # fill missing in train, validation and test data
             self.train_data[self.train_data.columns[:-1]
                             ] = imputer.transform(self.train_data.iloc[:, :-1])
+            self.val_data[self.val_data.columns[:-1]
+                          ] = imputer.transform(self.val_data.iloc[:, :-1])
             self.test_data[self.test_data.columns[:-1]
                            ] = imputer.transform(self.test_data.iloc[:, :-1])
-            logger.debug('filled missing values in train and test data')
+            logger.debug(
+                'filled missing values in train, validation and test data')
             # save imputer
             with open(os.path.join(self.prepro_dir, self.imputer_name), 'wb') as f:
                 pickle.dump(imputer, f)
@@ -215,12 +228,15 @@ class DataPreprocessor:
             scaler = MinMaxScaler()
             scaler.fit(self.train_data.iloc[:, :-1])
             logger.debug("fitted the scaler")
-            # scale train and test data
+            # scale train, validation and test data
             self.train_data[self.train_data.columns[:-1]
                             ] = scaler.transform(self.train_data.iloc[:, :-1])
+            self.val_data[self.val_data.columns[:-1]
+                          ] = scaler.transform(self.val_data.iloc[:, :-1])
             self.test_data[self.test_data.columns[:-1]
                            ] = scaler.transform(self.test_data.iloc[:, :-1])
-            logger.debug('scaled the values in train and test data')
+            logger.debug(
+                'scaled the values in train, validation and test data')
             # save the scaler
             with open(os.path.join(self.prepro_dir, self.scaler_name), 'wb') as f:
                 pickle.dump(scaler, f)
@@ -255,8 +271,12 @@ class DataPreprocessor:
                 self.train_data_dir, self.train_split_name), index=False)
             logging.debug("saved training data")
 
-            self.test_data.to_csv(os.path.join(self.train_data_dir,
-                                               self.test_split_name), index=False)
+            self.val_data.to_csv(os.path.join(
+                self.train_data_dir, self.val_split_name), index=False)
+            logging.debug("saved validation data")
+
+            self.test_data.to_csv(os.path.join(
+                self.train_data_dir, self.test_split_name), index=False)
             logging.debug("saved test data")
         else:
             self.pred_data.to_csv(os.path.join(
@@ -265,5 +285,5 @@ class DataPreprocessor:
 
 
 if __name__ == '__main__':
-    data_pro = DataPreprocessor('train')
+    data_pro = DataPreprocessor('pred')
     data_pro.run()

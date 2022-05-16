@@ -45,8 +45,9 @@
     "output_files":{
         "train":{
             "train_raw": "train_raw.csv",
-            "test":{
+            "splits":{
                 "train_split": "train_split.csv",
+                "val_split": "val_split.csv",
                 "test_split": "test_split.csv"}},
         "pred":{
             "pred_raw": "pred_raw.csv",

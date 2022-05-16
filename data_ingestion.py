@@ -305,6 +305,6 @@ class DataIngestion:
 
 
 if __name__ == '__main__':
-    data_inges = DataIngestion(process_type='train')
+    data_inges = DataIngestion(process_type='pred')
     data_inges.export_table_content()
     # print(data_inges.good_files)

@@ -10,8 +10,13 @@ from catboost import CatBoostClassifier, Pool
 from catboost.utils import eval_metric, select_threshold
 from kneed import KneeLocator
 from sklearn.cluster import KMeans
+from sklearn.utils.class_weight import compute_class_weight
 
 from logger import set_logger
+
+#! use new compute class weights
+#! main metric is F1 score
+#! add probability cut-off inside tuning
 
 # read artifacts file
 with open("artifacts.json", "r") as f:
@@ -19,8 +24,9 @@ with open("artifacts.json", "r") as f:
     log = artifacts['logging']
     modeling = artifacts['modeling']
     training_dir = artifacts['ingestion']['output']['folders']['train']
-    prepro_files = artifacts['preprocessing']['output_files']['train']['test']
+    prepro_files = artifacts['preprocessing']['output_files']['train']['splits']
     train_split_loc = os.path.join(training_dir, prepro_files['train_split'])
+    val_split_loc = os.path.join(training_dir, prepro_files['val_split'])
     test_split_loc = os.path.join(training_dir, prepro_files['test_split'])
 
 
@@ -37,6 +43,7 @@ class SemiSV:
         """instantiating the semi_supervised learning class
         """
         self.train_loc = train_split_loc
+        self.val_loc = val_split_loc
         self.test_loc = test_split_loc
         self.modeling_dir = modeling['dir']
         self.clustering_model_name = modeling['files']['clustering_model']
@@ -49,7 +56,7 @@ class SemiSV:
         logger.debug('created modeling directory')
 
     def read_dataset(self):
-        """load the training and testing dataset
+        """load the training, validation and testing dataset
 
         Raises:
             Exception: raise exception if the data is missing
@@ -58,6 +65,7 @@ class SemiSV:
         # reading the dataset
         try:
             self.train_data = pd.read_csv(self.train_loc)
+            self.val_data = pd.read_csv(self.val_loc)
             self.test_data = pd.read_csv(self.test_loc)
         except Exception:
             logger.exception(
@@ -72,7 +80,7 @@ class SemiSV:
         """
         logger.debug('starting clustering!!')
         # range of n_clusters
-        self.n_clusters_hp = [i for i in range(1, 4)]
+        self.n_clusters_hp = [i for i in range(1, 3)]
         self.wcss = []  # within cluster summation square
         # run hp optimization
         for n in self.n_clusters_hp:
@@ -102,12 +110,14 @@ class SemiSV:
             pickle.dump(self.k_means, f)
         logger.debug('save kmeans model')
 
-        # predict clusters for train and test dataset
+        # predict clusters for train, validation and test dataset
         self.train_data['cluster'] = self.k_means.predict(
             self.train_data.iloc[:, :-1])
+        self.val_data['cluster'] = self.k_means.predict(
+            self.val_data.iloc[:, :-1])
         self.test_data['cluster'] = self.k_means.predict(
             self.test_data.iloc[:, :-1])
-        logger.debug('ran the prediction for tain and test data')
+        logger.debug('ran the prediction for tain, validation and test data')
 
         # log number of datapoints and classes in each cluster for the train dataset
         for c in self.train_data['cluster'].unique():
@@ -118,14 +128,14 @@ class SemiSV:
 
         logger.debug('completed clustering!!')
 
-    def optuna_objective(self, trial, c_weights, data_train, data_test):
+    def optuna_objective(self, trial, c_weights, data_train, data_val):
         """hyperparameter optimization of the main parameters in catboost classifier using optuna function
 
         Args:
             trial (object): optuna trial object
             c_weights (dict): classes wights
             data_train (dataframe): training data for certain cluster
-            data_test (dataframe): testing data for certain cluster
+            data_val (dataframe): validation data for certain cluster
 
         Returns:
             float: validation accuracy
@@ -133,19 +143,19 @@ class SemiSV:
         learning_rate = trial.suggest_float(
             'learning_rate', 0.0001, 0.01, log=True)
         depth = trial.suggest_int('depth', 6, 10, log=False)
-        l2_leaf_reg = trial.suggest_float(
-            'l2_leaf_reg', 3, 12, log=False)
+        # l2_leaf_reg = trial.suggest_float(
+        #     'l2_leaf_reg', 3, 12, log=False)
+        # l2_leaf_reg=l2_leaf_reg,
 
         # defile model
         cb_model = CatBoostClassifier(iterations=1000,      learning_rate=learning_rate,
                                       depth=depth,
-                                      l2_leaf_reg=l2_leaf_reg,
                                       class_weights=c_weights, allow_writing_files=False,
                                       eval_metric='F1')
 
         # fit the model
         cb_model.fit(data_train.iloc[:, :-1], data_train.iloc[:, -1],
-                     eval_set=(data_test.iloc[:, :-1], data_test.iloc[:, -1]), early_stopping_rounds=10, verbose=False)
+                     eval_set=(data_val.iloc[:, :-1], data_val.iloc[:, -1]), early_stopping_rounds=5, verbose=False)
 
         score = cb_model.best_score_
         return score['validation']['F1']
@@ -161,54 +171,52 @@ class SemiSV:
         self.classification_metrices = {}
         # loop through clusters
         for c in self.train_data['cluster'].unique():
-            # prep train and test data
+            # prep train, validation and test data
             data_train = self.train_data[self.train_data['cluster']
                                          == c].iloc[:, :-1]
+            data_val = self.val_data[self.val_data['cluster']
+                                     == c].iloc[:, :-1]
             data_test = self.test_data[self.test_data['cluster']
                                        == c].iloc[:, :-1]
             logger.debug(
-                f'retrieved training and testing data for cluster {c}')
+                f'retrieved training, validation and testing data for cluster {c}')
 
-            # calculate class weights
-            try:
-                weight_1 = len(data_train[data_train.iloc[:, -1] == 0]) / \
-                    len(data_train[data_train.iloc[:, -1] == 1])
-            except Exception:  # in case class zero does not exists
-                weight_1 = 1
-                logger.warning(
-                    'due to certain exception weight of 1 is set to 1')
-
-            c_weights = {0: 1, 1: weight_1}
-            logger.debug(f'calculated classes weights: {c_weights}')
+            # calculate classes weights
+            classes = np.unique(data_train.iloc[:, -1])
+            weights = compute_class_weight(
+                class_weight='balanced', classes=classes, y=data_train.iloc[:, -1])
+            c_weights = dict(zip(classes, weights))
+            logger.debug(
+                f'calculated classes weights in cluster {c}, : {c_weights}')
 
             # hyperparameter tuning
             study = optuna.create_study(direction='maximize')
             study.optimize(lambda trial: self.optuna_objective(
-                trial, c_weights, data_train, data_test), n_trials=5)
+                trial, c_weights, data_train, data_val), n_trials=15)
 
             best_trial = study.best_trial
             logger.debug(
                 f'finished model optimization with F1 score of {best_trial.value} and the optimization parameters are {best_trial.params}')
 
             # build optimized model
+            #                                          l2_leaf_reg=best_trial.params['l2_leaf_reg'],
             c_model = CatBoostClassifier(iterations=1000,      learning_rate=best_trial.params['learning_rate'],
                                          depth=best_trial.params['depth'],
-                                         l2_leaf_reg=best_trial.params['l2_leaf_reg'],
                                          class_weights=c_weights, allow_writing_files=False,
                                          eval_metric='F1')
 
-            val_pool = Pool(data_test.iloc[:, :-1], data_test.iloc[:, -1])
             c_model.fit(data_train.iloc[:, :-1], data_train.iloc[:, -1],
-                        eval_set=val_pool, early_stopping_rounds=10, verbose=False)
+                        eval_set=(data_val.iloc[:, :-1], data_val.iloc[:, -1]), early_stopping_rounds=5, verbose=False)
 
             logging.debug(
                 f"finished bulding the optimized model of cluster {c}")
 
-            # get propability cutoff which yields false negative rate of 1%
+            # get propability cutoff which yields false negative rate of 10%
+            val_pool = Pool(data_val.iloc[:, :-1], data_val.iloc[:, -1])
             try:
                 thre_fnr = round(select_threshold(c_model,
                                                   data=val_pool,
-                                                  FNR=0.01), 3)
+                                                  FNR=0.4), 3)
             except Exception:
                 thre_fnr = 0.500
                 logger.warning(
@@ -219,23 +227,34 @@ class SemiSV:
             logger.debug(f'FNR threshold for cluster {c} is {thre_fnr}')
 
             # get evaluation metrics
+            # y prediction
             train_pred = c_model.predict_proba(data_train.iloc[:, :-1])[:, 1]
             train_pred = np.where(train_pred >= thre_fnr, 1, 0)
+            val_pred = c_model.predict_proba(data_val.iloc[:, :-1])[:, 1]
+            val_pred = np.where(val_pred >= thre_fnr, 1, 0)
             test_pred = c_model.predict_proba(data_test.iloc[:, :-1])[:, 1]
             test_pred = np.where(test_pred >= thre_fnr, 1, 0)
 
+            # y actual
             y_train = data_train.iloc[:, -1].to_numpy()
+            y_val = data_val.iloc[:, -1].to_numpy()
             y_test = data_test.iloc[:, -1].to_numpy()
 
+            # metrics - precision
             prec_train = round(eval_metric(
                 y_train, train_pred, 'Precision')[0], 3)
+            prec_val = round(eval_metric(
+                y_val, val_pred, 'Precision')[0], 3)
             prec_test = round(eval_metric(
                 y_test, test_pred, 'Precision')[0], 3)
+            # metrics - recall
             recall_train = round(eval_metric(
                 y_train, train_pred, 'Recall')[0], 3)
+            recall_val = round(eval_metric(y_val, val_pred, 'Recall')[0], 3)
             recall_test = round(eval_metric(y_test, test_pred, 'Recall')[0], 3)
+
             self.classification_metrices[f'cluster_{c}_model'] = {'precision': {
-                'train': prec_train, 'test': prec_test}, 'recall': {'train': recall_train, 'test': recall_test}}
+                'train': prec_train, 'val': prec_val, 'test': prec_test}, 'recall': {'train': recall_train, 'val': recall_val, 'test': recall_test}}
 
             logger.debug(f'calculated evaluation metrics for cluster {c}')
 
@@ -244,7 +263,6 @@ class SemiSV:
                 self.modeling_dir, f'{c}_{self.classification_model_name}'))
             logger.debug(f'saved the classification model for cluster {c}')
 
-        print(self.classification_metrices)
         # save prob_cutoff
         with open(os.path.join(self.modeling_dir, self.prob_cutoff_name), 'wb') as f:
             pickle.dump(self.prob_cutoff, f)
@@ -266,3 +284,4 @@ class SemiSV:
 if __name__ == '__main__':
     mod = SemiSV()
     mod.run()
+    print(mod.classification_metrices)
