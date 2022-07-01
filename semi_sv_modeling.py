@@ -2,6 +2,7 @@ import json
 import logging
 import os
 import pickle
+import shutil
 
 import numpy as np
 import optuna
@@ -10,13 +11,14 @@ from catboost import CatBoostClassifier, Pool
 from catboost.utils import eval_metric, select_threshold
 from kneed import KneeLocator
 from sklearn.cluster import KMeans
+from sklearn.metrics import confusion_matrix
 from sklearn.utils.class_weight import compute_class_weight
 
 from logger import set_logger
 
-#! use new compute class weights
-#! main metric is F1 score
-#! add probability cut-off inside tuning
+pd.options.display.max_columns = 999
+pd.options.display.max_rows = 999
+
 
 # read artifacts file
 with open("artifacts.json", "r") as f:
@@ -34,6 +36,8 @@ with open("artifacts.json", "r") as f:
 logger = logging.getLogger(__name__)
 logger = set_logger(logger, log['dir'], log['files']['semi_sv_modeling'])
 
+#! increase number of classes without error (edit weights)
+
 
 class SemiSV:
     """modeling class where a semi_supervised learning is used. optimized Kmeans model is used for clustering while the state of art catboost is used for classification
@@ -50,8 +54,11 @@ class SemiSV:
         self.classification_model_name = modeling['files']['classification_model']
         self.prob_cutoff_name = modeling['files']['probability_cutoff']
 
-        # make modeling dir
-        if not os.path.exists(self.modeling_dir):  # directory check
+        # delete modeling dir if it does exist and create a new one
+        try:
+            shutil.rmtree(self.modeling_dir)
+            os.makedirs(self.modeling_dir)
+        except OSError:
             os.makedirs(self.modeling_dir)
         logger.debug('created modeling directory')
 
@@ -80,7 +87,7 @@ class SemiSV:
         """
         logger.debug('starting clustering!!')
         # range of n_clusters
-        self.n_clusters_hp = [i for i in range(1, 3)]
+        self.n_clusters_hp = [i for i in range(1, 10)]
         self.wcss = []  # within cluster summation square
         # run hp optimization
         for n in self.n_clusters_hp:
@@ -89,16 +96,21 @@ class SemiSV:
             self.wcss.append(k_means.inertia_)
 
         # find knee
-        self.kn = KneeLocator(self.n_clusters_hp, self.wcss,
-                              curve='convex', direction='decreasing').knee
-        # if no knee fount return the last item in n_clusters_hp
-        if self.kn == None:
-            self.kn = self.n_clusters_hp[-1]
+        if len(self.n_clusters_hp) == 1:  # in case of just one cluster
+            self.kn = 1
             logger.debug(
-                f'not found the optimum number of clusters, thus used the last item in n_clusters_hp which is {self.kn}')
-        else:
-            logger.debug(
-                f'found optimum number of clusters and that is {self.kn}')
+                f'optimum number of clusters is {self.kn} as just one cluster')
+        else:  # choosing from multiple clusters
+            self.kn = KneeLocator(self.n_clusters_hp, self.wcss,
+                                  curve='convex', direction='decreasing').knee
+            # if no knee fount return the last item in n_clusters_hp
+            if self.kn == None:
+                self.kn = self.n_clusters_hp[-1]
+                logger.debug(
+                    f'not found the optimum number of clusters, thus used the last item in n_clusters_hp which is {self.kn}')
+            else:
+                logger.debug(
+                    f'found optimum number of clusters and that is {self.kn}')
 
         # build the optimized kmeans model
         self.k_means = KMeans(n_clusters=self.kn)
@@ -141,21 +153,19 @@ class SemiSV:
             float: validation accuracy
         """
         learning_rate = trial.suggest_float(
-            'learning_rate', 0.0001, 0.01, log=True)
+            'learning_rate', 0.00001, 0.01, log=True)
         depth = trial.suggest_int('depth', 6, 10, log=False)
-        # l2_leaf_reg = trial.suggest_float(
-        #     'l2_leaf_reg', 3, 12, log=False)
-        # l2_leaf_reg=l2_leaf_reg,
+        l2_leaf_reg = trial.suggest_float('l2_leaf_reg', 3, 12, log=False)
 
         # defile model
-        cb_model = CatBoostClassifier(iterations=1000,      learning_rate=learning_rate,
-                                      depth=depth,
-                                      class_weights=c_weights, allow_writing_files=False,
+        cb_model = CatBoostClassifier(iterations=1000, learning_rate=learning_rate,
+                                      depth=depth, l2_leaf_reg=l2_leaf_reg,
+                                      class_weights=c_weights, allow_const_label=True, allow_writing_files=False,
                                       eval_metric='F1')
 
         # fit the model
         cb_model.fit(data_train.iloc[:, :-1], data_train.iloc[:, -1],
-                     eval_set=(data_val.iloc[:, :-1], data_val.iloc[:, -1]), early_stopping_rounds=5, verbose=False)
+                     eval_set=(data_val.iloc[:, :-1], data_val.iloc[:, -1]), early_stopping_rounds=10, verbose=False)
 
         score = cb_model.best_score_
         return score['validation']['F1']
@@ -186,23 +196,26 @@ class SemiSV:
             weights = compute_class_weight(
                 class_weight='balanced', classes=classes, y=data_train.iloc[:, -1])
             c_weights = dict(zip(classes, weights))
+
+            if len(c_weights) == 1:  # in case of one label
+                c_weights[1] = 0
+
             logger.debug(
                 f'calculated classes weights in cluster {c}, : {c_weights}')
 
             # hyperparameter tuning
             study = optuna.create_study(direction='maximize')
             study.optimize(lambda trial: self.optuna_objective(
-                trial, c_weights, data_train, data_val), n_trials=15)
+                trial, c_weights, data_train, data_val), n_trials=3)
 
             best_trial = study.best_trial
             logger.debug(
                 f'finished model optimization with F1 score of {best_trial.value} and the optimization parameters are {best_trial.params}')
 
             # build optimized model
-            #                                          l2_leaf_reg=best_trial.params['l2_leaf_reg'],
-            c_model = CatBoostClassifier(iterations=1000,      learning_rate=best_trial.params['learning_rate'],
-                                         depth=best_trial.params['depth'],
-                                         class_weights=c_weights, allow_writing_files=False,
+            c_model = CatBoostClassifier(iterations=1000, learning_rate=best_trial.params['learning_rate'],
+                                         depth=best_trial.params['depth'], l2_leaf_reg=best_trial.params['l2_leaf_reg'],
+                                         class_weights=c_weights, allow_const_label=True, allow_writing_files=False,
                                          eval_metric='F1')
 
             c_model.fit(data_train.iloc[:, :-1], data_train.iloc[:, -1],
@@ -214,15 +227,17 @@ class SemiSV:
             # get propability cutoff which yields false negative rate of 10%
             val_pool = Pool(data_val.iloc[:, :-1], data_val.iloc[:, -1])
             try:
-                thre_fnr = round(select_threshold(c_model,
-                                                  data=val_pool,
-                                                  FNR=0.4), 3)
+                thre_fnr = select_threshold(c_model,
+                                            data=val_pool,
+                                            FNR=0.10)
+
             except Exception:
                 thre_fnr = 0.500
                 logger.warning(
                     'could not find FNR threshold, thus it was set to 0.5')
 
             # add propability cutoff to dict
+            thre_fnr = round(thre_fnr, 3)
             self.prob_cutoff[c] = thre_fnr
             logger.debug(f'FNR threshold for cluster {c} is {thre_fnr}')
 
@@ -240,6 +255,12 @@ class SemiSV:
             y_val = data_val.iloc[:, -1].to_numpy()
             y_test = data_test.iloc[:, -1].to_numpy()
 
+            print(confusion_matrix(y_train, train_pred))
+            print()
+            print(confusion_matrix(y_val, val_pred))
+            print()
+            print(confusion_matrix(y_test, test_pred))
+
             # metrics - precision
             prec_train = round(eval_metric(
                 y_train, train_pred, 'Precision')[0], 3)
@@ -252,9 +273,15 @@ class SemiSV:
                 y_train, train_pred, 'Recall')[0], 3)
             recall_val = round(eval_metric(y_val, val_pred, 'Recall')[0], 3)
             recall_test = round(eval_metric(y_test, test_pred, 'Recall')[0], 3)
+            # confusion matrix
+            conf_train = confusion_matrix(y_train, train_pred)
+            conf_val = confusion_matrix(y_val, val_pred)
+            conf_test = confusion_matrix(y_test, test_pred)
 
             self.classification_metrices[f'cluster_{c}_model'] = {'precision': {
-                'train': prec_train, 'val': prec_val, 'test': prec_test}, 'recall': {'train': recall_train, 'val': recall_val, 'test': recall_test}}
+                'train': prec_train, 'val': prec_val, 'test': prec_test},
+                'recall': {'train': recall_train, 'val': recall_val, 'test': recall_test},
+                'confusion matrix': {'train': conf_train, 'val': conf_val, 'test': conf_test}}
 
             logger.debug(f'calculated evaluation metrics for cluster {c}')
 
