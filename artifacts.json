@@ -41,7 +41,8 @@
     "files" :
         {"removed_cols": "zero_std_cols.pickle",
         "data_imputer": "imputer.pickle",
-        "data_scaler": "scaler.pickle"},
+        "data_scaler": "scaler.pickle", 
+        "pca_model": "pca_model.pickle"},
     "output_files":{
         "train":{
             "train_raw": "train_raw.csv",
@@ -50,7 +51,6 @@
                 "val_split": "val_split.csv",
                 "test_split": "test_split.csv"}},
         "pred":{
-            "pred_raw": "pred_raw.csv",
             "pred_prepro": "pred_preprocessed.csv"}
         }
     },

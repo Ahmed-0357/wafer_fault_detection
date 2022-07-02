@@ -4,6 +4,7 @@ import os
 import pickle
 
 import pandas as pd
+from sklearn.decomposition import PCA
 from sklearn.impute import KNNImputer
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import MinMaxScaler
@@ -29,7 +30,7 @@ logger = set_logger(logger, log['dir'], log['files']['data_preprocessing'])
 
 
 class DataPreprocessor:
-    """data preprocessing includes data cleaning, train, validation and test split, missing data imputation and features scaling
+    """data preprocessing includes data cleaning, train, validation and test split, missing data imputation, features scaling and pca decomposition
     """
 
     def __init__(self, process_type='train'):
@@ -44,9 +45,9 @@ class DataPreprocessor:
         self.train_data_dir = output_artifacts['folders']['train']
         self.pred_data_dir = output_artifacts['folders']['pred']
         self.train_raw_name = data_prepro['output_files']['train']['train_raw']
-        self.pred_raw_name = data_prepro['output_files']['pred']['pred_raw']
         self.imputer_name = data_prepro['files']['data_imputer']
         self.scaler_name = data_prepro['files']['data_scaler']
+        self.pca_model = data_prepro['files']['pca_model']
 
         self.train_split_name = data_prepro['output_files']['train']['splits']['train_split']
         self.val_split_name = data_prepro['output_files']['train']['splits']['val_split']
@@ -90,7 +91,7 @@ class DataPreprocessor:
             logger.debug('successfully loaded the dataset!!')
 
     def data_cleaning(self):
-        """training dataset cleaning includes removing wafer column, removing duplicates rows, fix output column labeling, removing columns with single values.
+        """training dataset cleaning includes removing wafer column, removing duplicates rows, fix output column labeling, removing columns with single values. 
         prediction dataset cleaning includes removing wafer column, removing duplicates rows, fix output column labeling
         """
         logger.debug('starting dataset cleaning!!')
@@ -135,18 +136,14 @@ class DataPreprocessor:
                 logger.debug(
                     f'total of {len(cols_removed)} columns has been removed from prediction data')
 
-        # save the row data
+        # save the row data - use the relabeled output
         new_index = self.data.index.tolist()
         self.data_raw = self.data_raw.iloc[new_index, :]
-        if self.process_type == 'train':  # use the relabeled output
+        if self.process_type == 'train':
             self.data_raw.iloc[:, -1] = self.data.iloc[:, -1]
             self.data_raw.to_csv(os.path.join(
                 self.train_data_dir, self.train_raw_name), index=False)
             logger.debug("saved raw train data")
-        else:
-            self.data_raw.to_csv(os.path.join(
-                self.pred_data_dir, self.pred_raw_name), index=False)
-            logger.debug("saved raw pred data")
 
         logger.debug('successfully completed data cleaning!!')
 
@@ -252,6 +249,59 @@ class DataPreprocessor:
 
         logger.debug("completed features scaling!!")
 
+    def pca_decomp(self):
+        """linear dimensionality reduction of the features
+        """
+        logger.debug("starting pca decomposition!!")
+        if self.process_type == 'train':
+            pca = PCA(0.85)  # keep 85% of data variance
+            pca.fit(self.train_data.iloc[:, :-1])
+            logger.debug("fitted pca model")
+
+            # transform train, validation and test data
+            train_array = pca.transform(self.train_data.iloc[:, :-1])
+            train_data_ = pd.DataFrame(train_array, columns=[
+                                       F'PC-{i+1}' for i in range(train_array.shape[1])])
+            train_data_[self.train_data.columns[-1]
+                        ] = self.train_data.iloc[:, -1].to_numpy()
+            self.train_data = train_data_
+
+            val_array = pca.transform(self.val_data.iloc[:, :-1])
+            val_data_ = pd.DataFrame(val_array, columns=[
+                F'PC-{i+1}' for i in range(val_array.shape[1])])
+            val_data_[self.val_data.columns[-1]
+                      ] = self.val_data.iloc[:, -1].to_numpy()
+            self.val_data = val_data_
+
+            test_array = pca.transform(self.test_data.iloc[:, :-1])
+            test_data_ = pd.DataFrame(test_array, columns=[
+                F'PC-{i+1}' for i in range(test_array.shape[1])])
+            test_data_[self.test_data.columns[-1]
+                       ] = self.test_data.iloc[:, -1].to_numpy()
+            self.test_data = test_data_
+
+            logger.debug(
+                f'number of PCA components with 85% data variance is {self.test_data.shape[1]}')
+            logger.debug(
+                'transformed the values in train, validation and test data')
+            # save the pca model
+            with open(os.path.join(self.prepro_dir, self.pca_model), 'wb') as f:
+                pickle.dump(pca, f)
+            logger.debug('saved the pca model')
+        else:
+            # load pca model
+            with open(os.path.join(self.prepro_dir, self.pca_model), 'rb') as f:
+                pca = pickle.load(f)
+            logger.debug('loaded the pca model')
+
+            pred_array = pca.transform(self.pred_data)
+            pred_data_ = pd.DataFrame(pred_array, columns=[
+                F'PC-{i+1}' for i in range(pred_array.shape[1])])
+            self.pred_data = pred_data_
+            logger.debug('transformed the values in prediction data')
+
+        logger.debug("completed pca decomposition!!")
+
     def run(self):
         """run all the main functions for data preprocessing and save the data for the next module
         """
@@ -265,6 +315,9 @@ class DataPreprocessor:
         self.missing_data_imp()
         # features scaling
         self.features_scaling()
+        # pca decomposition
+        self.pca_decomp()
+
         # save the files
         if self.process_type == 'train':
             self.train_data.to_csv(os.path.join(
@@ -278,6 +331,7 @@ class DataPreprocessor:
             self.test_data.to_csv(os.path.join(
                 self.train_data_dir, self.test_split_name), index=False)
             logging.debug("saved test data")
+
         else:
             self.pred_data.to_csv(os.path.join(
                 self.pred_data_dir, self.pred_prepro_name), index=False)

@@ -16,10 +16,6 @@ from sklearn.utils.class_weight import compute_class_weight
 
 from logger import set_logger
 
-pd.options.display.max_columns = 999
-pd.options.display.max_rows = 999
-
-
 # read artifacts file
 with open("artifacts.json", "r") as f:
     artifacts = json.load(f)
@@ -35,8 +31,6 @@ with open("artifacts.json", "r") as f:
 # set logger
 logger = logging.getLogger(__name__)
 logger = set_logger(logger, log['dir'], log['files']['semi_sv_modeling'])
-
-#! increase number of classes without error (edit weights)
 
 
 class SemiSV:
@@ -153,7 +147,7 @@ class SemiSV:
             float: validation accuracy
         """
         learning_rate = trial.suggest_float(
-            'learning_rate', 0.00001, 0.01, log=True)
+            'learning_rate', 0.0001, 0.01, log=True)
         depth = trial.suggest_int('depth', 6, 10, log=False)
         l2_leaf_reg = trial.suggest_float('l2_leaf_reg', 3, 12, log=False)
 
@@ -206,7 +200,7 @@ class SemiSV:
             # hyperparameter tuning
             study = optuna.create_study(direction='maximize')
             study.optimize(lambda trial: self.optuna_objective(
-                trial, c_weights, data_train, data_val), n_trials=3)
+                trial, c_weights, data_train, data_val), n_trials=15)
 
             best_trial = study.best_trial
             logger.debug(
@@ -219,7 +213,7 @@ class SemiSV:
                                          eval_metric='F1')
 
             c_model.fit(data_train.iloc[:, :-1], data_train.iloc[:, -1],
-                        eval_set=(data_val.iloc[:, :-1], data_val.iloc[:, -1]), early_stopping_rounds=5, verbose=False)
+                        eval_set=(data_val.iloc[:, :-1], data_val.iloc[:, -1]), early_stopping_rounds=10, verbose=False)
 
             logging.debug(
                 f"finished bulding the optimized model of cluster {c}")
@@ -255,6 +249,7 @@ class SemiSV:
             y_val = data_val.iloc[:, -1].to_numpy()
             y_test = data_test.iloc[:, -1].to_numpy()
 
+            #! delete this
             print(confusion_matrix(y_train, train_pred))
             print()
             print(confusion_matrix(y_val, val_pred))
