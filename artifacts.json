@@ -4,7 +4,8 @@
         {"main":"main.log", 
         "data_ingestion": "data_ingestion.log",
         "data_preprocessing": "data_preprocessing.log",
-        "semi_sv_modeling": "semi_sv_modeling.log"}
+        "semi_sv_modeling": "semi_sv_modeling.log",
+        "prediction": "prediction.log"}
         },
 
 "ingestion":  
@@ -51,6 +52,7 @@
                 "val_split": "val_split.csv",
                 "test_split": "test_split.csv"}},
         "pred":{
+            "pred_raw": "pred_raw.csv",
             "pred_prepro": "pred_preprocessed.csv"}
         }
     },
@@ -61,6 +63,8 @@
         {"clustering_model": "kmeans.pickle",
         "classification_model": "catboost.dump",
         "probability_cutoff": "probability_cutoff.pickle"}
-    }
-    
+    }, 
+
+"prediction": 
+    {"file" : "pred_results.csv"}
 }

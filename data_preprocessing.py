@@ -45,6 +45,7 @@ class DataPreprocessor:
         self.train_data_dir = output_artifacts['folders']['train']
         self.pred_data_dir = output_artifacts['folders']['pred']
         self.train_raw_name = data_prepro['output_files']['train']['train_raw']
+        self.pred_raw_name = data_prepro['output_files']['pred']['pred_raw']
         self.imputer_name = data_prepro['files']['data_imputer']
         self.scaler_name = data_prepro['files']['data_scaler']
         self.pca_model = data_prepro['files']['pca_model']
@@ -136,7 +137,7 @@ class DataPreprocessor:
                 logger.debug(
                     f'total of {len(cols_removed)} columns has been removed from prediction data')
 
-        # save the row data - use the relabeled output
+        # save the row data - use the relabeled output or for dropped row
         new_index = self.data.index.tolist()
         self.data_raw = self.data_raw.iloc[new_index, :]
         if self.process_type == 'train':
@@ -144,6 +145,11 @@ class DataPreprocessor:
             self.data_raw.to_csv(os.path.join(
                 self.train_data_dir, self.train_raw_name), index=False)
             logger.debug("saved raw train data")
+
+        else:
+            self.data_raw.to_csv(os.path.join(
+                self.pred_data_dir, self.pred_raw_name), index=False)
+            logger.debug("saved raw pred data")
 
         logger.debug('successfully completed data cleaning!!')
 
