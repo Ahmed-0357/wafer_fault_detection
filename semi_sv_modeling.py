@@ -249,12 +249,12 @@ class SemiSV:
             y_val = data_val.iloc[:, -1].to_numpy()
             y_test = data_test.iloc[:, -1].to_numpy()
 
-            #! delete this
-            print(confusion_matrix(y_train, train_pred))
-            print()
-            print(confusion_matrix(y_val, val_pred))
-            print()
-            print(confusion_matrix(y_test, test_pred))
+            # #! delete this
+            # print(confusion_matrix(y_train, train_pred))
+            # print()
+            # print(confusion_matrix(y_val, val_pred))
+            # print()
+            # print(confusion_matrix(y_test, test_pred))
 
             # metrics - precision
             prec_train = round(eval_metric(

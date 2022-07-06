@@ -13,3 +13,5 @@ prediction_data
 good_files
 preprocessing
 modeling
+training_batch_files
+prediction_batch_files
