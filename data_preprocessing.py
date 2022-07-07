@@ -30,7 +30,9 @@ logger = set_logger(logger, log['dir'], log['files']['data_preprocessing'])
 
 
 class DataPreprocessor:
-    """data preprocessing includes data cleaning, train, validation and test split, missing data imputation, features scaling and pca decomposition
+    """training data preprocessing includes data cleaning, train-validation-test split, missing data imputation, features scaling and pca decomposition.
+
+    prediction data preprocessing includes data cleaning, missing data imputation, features scaling and pca decomposition.
     """
 
     def __init__(self, process_type='train'):

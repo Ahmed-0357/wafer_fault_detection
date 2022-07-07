@@ -81,7 +81,7 @@ class SemiSV:
         """
         logger.debug('starting clustering!!')
         # range of n_clusters
-        self.n_clusters_hp = [i for i in range(1, 10)]
+        self.n_clusters_hp = [i for i in range(1, 11)]
         self.wcss = []  # within cluster summation square
         # run hp optimization
         for n in self.n_clusters_hp:
