@@ -48,7 +48,7 @@ class SemiSV:
         self.classification_model_name = modeling['files']['classification_model']
         self.prob_cutoff_name = modeling['files']['probability_cutoff']
 
-        # delete modeling dir if it does exist and create a new one
+        # delete modeling dir if it does exist or create a new one
         try:
             shutil.rmtree(self.modeling_dir)
             os.makedirs(self.modeling_dir)
@@ -81,7 +81,7 @@ class SemiSV:
         """
         logger.debug('starting clustering!!')
         # range of n_clusters
-        self.n_clusters_hp = [i for i in range(1, 11)]
+        self.n_clusters_hp = [i for i in range(1, 16)]
         self.wcss = []  # within cluster summation square
         # run hp optimization
         for n in self.n_clusters_hp:
@@ -95,7 +95,7 @@ class SemiSV:
             logger.debug(
                 f'optimum number of clusters is {self.kn} as just one cluster')
         else:  # choosing from multiple clusters
-            self.kn = KneeLocator(self.n_clusters_hp, self.wcss,
+            self.kn = KneeLocator(self.n_clusters_hp, self.wcss, S=1.8,
                                   curve='convex', direction='decreasing').knee
             # if no knee fount return the last item in n_clusters_hp
             if self.kn == None:
@@ -174,7 +174,7 @@ class SemiSV:
         # dict to save classification metrices of each cluster
         self.classification_metrices = {}
         # loop through clusters
-        for c in self.train_data['cluster'].unique():
+        for c in np.sort(self.train_data['cluster'].unique()):
             # prep train, validation and test data
             data_train = self.train_data[self.train_data['cluster']
                                          == c].iloc[:, :-1]
@@ -249,13 +249,6 @@ class SemiSV:
             y_val = data_val.iloc[:, -1].to_numpy()
             y_test = data_test.iloc[:, -1].to_numpy()
 
-            # #! delete this
-            # print(confusion_matrix(y_train, train_pred))
-            # print()
-            # print(confusion_matrix(y_val, val_pred))
-            # print()
-            # print(confusion_matrix(y_test, test_pred))
-
             # metrics - precision
             prec_train = round(eval_metric(
                 y_train, train_pred, 'Precision')[0], 3)
@@ -273,7 +266,7 @@ class SemiSV:
             conf_val = confusion_matrix(y_val, val_pred)
             conf_test = confusion_matrix(y_test, test_pred)
 
-            self.classification_metrices[f'cluster_{c}_model'] = {'precision': {
+            self.classification_metrices[f'model_cluster_{c}'] = {'precision': {
                 'train': prec_train, 'val': prec_val, 'test': prec_test},
                 'recall': {'train': recall_train, 'val': recall_val, 'test': recall_test},
                 'confusion matrix': {'train': conf_train, 'val': conf_val, 'test': conf_test}}
