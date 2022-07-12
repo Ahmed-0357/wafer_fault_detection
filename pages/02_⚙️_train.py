@@ -25,7 +25,7 @@ st.markdown('## Data Ingestion')
 # open training DSA
 with open('DSA_schema\schema_training.json') as f:
     help_c = json.load(f)
-uploaded_files = st.file_uploader('Upload batch files', type='csv',
+uploaded_files = st.file_uploader('upload batch files', type='csv',
                                 accept_multiple_files=True, help='the ideal file should follow this DSA format: '+str(help_c))
  
 df_i, df_p = None, None
@@ -55,7 +55,7 @@ if df_i is not None:
 
     # data ingestion
     st.markdown('## Data Preprocessing')
-    button1 = st.button('click here', help='data preprocessing includes data cleaning, train-validation-test split, missing data imputation, features scaling and pca decomposition')
+    button1 = st.button('click here', help='data preprocessing includes data cleaning, train-validation-test split, missing data imputation, features scaling and PCA decomposition')
     
     if st.session_state.get('button') != True:
         st.session_state['button'] = button1
@@ -99,7 +99,6 @@ if df_i is not None:
                 st.json(metrics)
                 st.session_state['button'] = True
 
-        
 
 
 
