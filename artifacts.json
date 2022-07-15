@@ -66,5 +66,13 @@
     }, 
 
 "prediction": 
-    {"file" : "pred_results.csv"}
+    {"file" : "pred_results.csv"},
+
+"demo": 
+    {"dir":"demo",
+    "files" :
+        {"wafer": "Picture1.png",
+        "architecture": "Picture2.png",
+        "sample_file": "sample_train_file.csv"}
+    }
 }

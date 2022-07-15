@@ -14,16 +14,20 @@ st.markdown('#')
 # read artifacts file
 with open("artifacts.json", "r") as f:
     artifacts = json.load(f)
-    inges = artifacts['ingestion']["output"]
-    train_dir = inges['folders']['train']
-    train_file = inges['files']['train']
+    inges = artifacts['ingestion']
+    
+    schema_dir = inges['schema']['dir']
+    train_dsa_file = inges['schema']['files']['train']
+    
+    train_dir = inges["output"]['folders']['train']
+    train_file = inges["output"]['files']['train']
     
     train_split_file = artifacts['preprocessing']['output_files']['train']['splits']['train_split']
 
 # data ingestion
 st.markdown('## Data Ingestion')
 # open training DSA
-with open('DSA_schema\schema_training.json') as f:
+with open(os.path.join(schema_dir,train_dsa_file)) as f:
     help_c = json.load(f)
 uploaded_files = st.file_uploader('upload batch files', type='csv',
                                 accept_multiple_files=True, help='the ideal file should follow this DSA format: '+str(help_c))
@@ -53,7 +57,7 @@ if df_i is not None:
     st.plotly_chart(fig1)
             
 
-    # data ingestion
+    # data preprocessing
     st.markdown('## Data Preprocessing')
     button1 = st.button('click here', help='data preprocessing includes data cleaning, train-validation-test split, missing data imputation, features scaling and PCA decomposition')
     
