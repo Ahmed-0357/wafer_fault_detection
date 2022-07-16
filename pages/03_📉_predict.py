@@ -57,10 +57,10 @@ if df_ip is not None:
     
     button2 = st.button('click here')
     
-    if st.session_state.get('button') != True:
-        st.session_state['button'] = button2
+    if st.session_state.get('button2') != True:
+        st.session_state['button2'] = button2
         
-    if st.session_state['button'] == True:
+    if st.session_state['button2'] == True:
         with st.spinner('data prediction...'):
             # preprocessing
             data_process(type_='pred')
@@ -72,11 +72,13 @@ if df_ip is not None:
         
         # enable results download
         st.markdown('###')
+        st.write('prediction results')
         results_df = pd.read_csv(os.path.join(pred_dir, pred_results_n))
-        csv = convert_df(results_df)
+        st.dataframe(results_df)
+        st.write('')
         st.download_button(
             label="Download prediction as CSV",
-            data=csv,
+            data=results_df.to_csv(index=False).encode('utf-8'),
             file_name='prediction.csv',
             mime='text/csv',
         )

@@ -1,1 +1,38 @@
-<h1 align="center"> <b> Wafer Fault Detection 🔍 </b></h1>
+<h1 align="center"> <b> ◍ Wafer Fault Detection ◍ </b></h1>
+
+- This is an autonomous semi-supervised machine learning application to detect the quality of electronic wafers based on the inputs from various sensors.
+- A wafer is a thin slice of semiconductor used for the fabrication of integrated circuits and, in photovoltaics, to manufacture solar cells.
+
+<br />
+<p align="center"> 
+    <img src=./demo/Picture1.png /> 
+</p>
+<figcaption align = "center"><b> electronic wafer with built in circuits </b></figcaption>
+
+<br />
+<p align="justify"> The project architecture is made up of two main pipelines (training and prediction). The training pipeline contains three stages namely data ingestion, data preprocessing, and model development, while the prediction pipeline contains data ingestion, data preprocessing, and prediction. </p>
+
+<br />
+<p align="center"> 
+    <img src=./demo/Picture2.png /> 
+</p>
+<figcaption align = "center"><b> project architecture </b></figcaption>
+
+<br />
+<p align="center">
+  <img src=./demo/train.gif alt="animated" />
+</p>
+<figcaption align = "center"><b> training page </b></figcaption>
+
+<br />
+<p align="center">
+  <img src=./demo/predict.gif alt="animated" />
+</p>
+<figcaption align = "center"><b> prediction page </b></figcaption>
+
+<br />
+<h2><b> click here to try the application </b><img src="https://emojis.slackmojis.com/emojis/images/1600706728/10521/meow_code.gif?1600706728" width="25"/> </h2>
+
+<br />
+<h2><b> Authors </b></h2>
+- Ahmed Abdulrahman (ahmedabdulrahman419@gmail.com)

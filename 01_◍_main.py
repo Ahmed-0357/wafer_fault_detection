@@ -38,6 +38,7 @@ st.dataframe(df_s)
 st.markdown('##')
 st.markdown('<p align="justify"> The project architecture is made up of two main pipelines (training and prediction). The training pipeline contains three stages namely data ingestion, data preprocessing, and model development, while the prediction pipeline contains data ingestion, data preprocessing, and prediction. </p>', unsafe_allow_html=True)
 
-st.image(os.path.join(demo_dir, architecture_pic), caption='project architecture')
+col4, col5, col6 = st.columns([1,22,1])
+col5.image(os.path.join(demo_dir, architecture_pic), caption='project architecture')
 
 

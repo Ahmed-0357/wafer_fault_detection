@@ -19,7 +19,7 @@ with open("artifacts.json", "r") as f:
     batch_dir_pred = inges['batch_dir_pred']
 
 
-# @st.cache(show_spinner=False)
+@st.cache(show_spinner=False)
 def save_ingest_data(uploaded_files, type_='train'):
     """saving and ingesting training batch files
 
@@ -58,7 +58,7 @@ def save_ingest_data(uploaded_files, type_='train'):
     return good_files
 
 
-# @st.cache(show_spinner=False)
+@st.cache(show_spinner=False)
 def data_process(type_='train'):
     """preprocessing the data
 
@@ -73,7 +73,9 @@ def data_process(type_='train'):
     data_pro.run()
 
 
-# @st.cache(show_spinner=False)
+st.cache(show_spinner=False)
+
+
 def model_train():
     """model training
 
@@ -90,22 +92,9 @@ def model_train():
     return n_clusters_hp, wcss, df_tc, metrics
 
 
-# @st.cache(show_spinner=False)
+@st.cache(show_spinner=False)
 def data_predic():
     """run prediction for blind data
     """
     pred_c = Prediction()
     pred_c.run()
-
-
-@st.cache(show_spinner=False)
-def convert_df(df):
-    """prepare results df to be downloaded
-
-    Args:
-        df (pandas df): results df
-
-    Returns:
-        pandas df: results df
-    """
-    return df.to_csv(index=False).encode('utf-8')
