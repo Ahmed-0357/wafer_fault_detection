@@ -5,9 +5,11 @@
 
 <br />
 <p align="center"> 
-    <img src=./demo/Picture1.png /> 
+    <img src=./demo/Picture1.png />  
 </p>
-<figcaption align = "center"><b> electronic wafer with built in circuits </b></figcaption>
+<p align="center"> 
+  <b> electronic wafer with built in circuits </b> 
+</p>
 
 <br />
 <p align="justify"> The project architecture is made up of two main pipelines (training and prediction). The training pipeline contains three stages namely data ingestion, data preprocessing, and model development, while the prediction pipeline contains data ingestion, data preprocessing, and prediction. </p>
@@ -16,19 +18,25 @@
 <p align="center"> 
     <img src=./demo/Picture2.png /> 
 </p>
-<figcaption align = "center"><b> project architecture </b></figcaption>
+<p align="center"> 
+  <b> project architecture </b>
+</p>
 
 <br />
 <p align="center">
   <img src=./demo/train.gif alt="animated" />
 </p>
-<figcaption align = "center"><b> training page </b></figcaption>
+<p align="center">
+  <b> training page </b>
+</p>
 
 <br />
 <p align="center">
   <img src=./demo/predict.gif alt="animated" />
 </p>
-<figcaption align = "center"><b> prediction page </b></figcaption>
+<p align="center">
+  <b> prediction page </b>
+</p>
 
 <br />
 <h2><b> click here to try the application </b><img src="https://emojis.slackmojis.com/emojis/images/1600706728/10521/meow_code.gif?1600706728" width="25"/> </h2>
