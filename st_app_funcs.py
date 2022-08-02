@@ -74,8 +74,6 @@ def data_process(type_='train'):
 
 
 st.cache(show_spinner=False)
-
-
 def model_train():
     """model training
 

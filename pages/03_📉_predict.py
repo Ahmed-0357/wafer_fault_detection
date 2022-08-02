@@ -6,6 +6,11 @@ import plotly.express as px
 import streamlit as st
 from st_app_funcs import *
 
+# config
+page_title="Wafer Fault Detection - Predict"
+page_icon = ":mag_right:"
+st.set_page_config(page_title = page_title,page_icon=page_icon)
+
 # title
 html_title = '<h1 align="center"> <b>📉 Data Prediction 📉</b></h1>'
 st.markdown(html_title, unsafe_allow_html=True)
@@ -24,6 +29,8 @@ with open("artifacts.json", "r") as f:
     pred_file = inges["output"]['files']['pred']
     
     pred_results_n = artifacts['prediction']["file"]
+    
+    mod_dir  = artifacts['modeling']['dir']
     
 # data ingestion
 st.markdown('## Data Ingestion')
@@ -55,30 +62,35 @@ if df_ip is not None:
     # data pred
     st.markdown('## Data Prediction')
     
-    button2 = st.button('click here')
-    
-    if st.session_state.get('button2') != True:
-        st.session_state['button2'] = button2
+    try:
+        os.listdir(mod_dir)
+    except Exception:
+        st.error('no model was found, please train the model first')
+    else:
+        button2 = st.button('click here')
         
-    if st.session_state['button2'] == True:
-        with st.spinner('data prediction...'):
-            # preprocessing
-            data_process(type_='pred')
+        if st.session_state.get('button2') != True:
+            st.session_state['button2'] = button2
             
-            # prediction
-            data_predic()
-            st.success('prediction been done successfully')
+        if st.session_state['button2'] == True:
+            with st.spinner('data prediction...'):
+                # preprocessing
+                data_process(type_='pred')
+                
+                # prediction
+                data_predic()
+                st.success('prediction been done successfully')
+                
             
-        
-        # enable results download
-        st.markdown('###')
-        st.write('prediction results')
-        results_df = pd.read_csv(os.path.join(pred_dir, pred_results_n))
-        st.dataframe(results_df)
-        st.write('')
-        st.download_button(
-            label="Download prediction as CSV",
-            data=results_df.to_csv(index=False).encode('utf-8'),
-            file_name='prediction.csv',
-            mime='text/csv',
-        )
+            # enable results downloadk
+            st.markdown('###')
+            st.write('prediction results')
+            results_df = pd.read_csv(os.path.join(pred_dir, pred_results_n))
+            st.dataframe(results_df)
+            st.write('')
+            st.download_button(
+                label="Download prediction as CSV",
+                data=results_df.to_csv(index=False).encode('utf-8'),
+                file_name='prediction.csv',
+                mime='text/csv',
+            )

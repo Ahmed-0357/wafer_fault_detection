@@ -6,6 +6,11 @@ import plotly.express as px
 import streamlit as st
 from st_app_funcs import *
 
+# config
+page_title="Wafer Fault Detection - Train"
+page_icon = ":mag_right:"
+st.set_page_config(page_title = page_title,page_icon=page_icon)
+
 # title
 html_title = '<h1 align="center"> <b>⚙️ Model Training ⚙️</b></h1>'
 st.markdown(html_title, unsafe_allow_html=True)

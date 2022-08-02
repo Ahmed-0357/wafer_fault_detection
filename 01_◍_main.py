@@ -4,6 +4,11 @@ import os
 import pandas as pd
 import streamlit as st
 
+# config
+page_title="Wafer Fault Detection"
+page_icon = ":mag_right:"
+st.set_page_config(page_title = page_title,page_icon=page_icon)
+
 # title
 html_title = '<h1 align="center"> <b>◍ Wafer Fault Detection ◍ </b></h1>'
 st.markdown(html_title, unsafe_allow_html=True)
