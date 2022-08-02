@@ -40,7 +40,7 @@
 
 <br />
 
-- <h2><b> Click <a href="waferfaultdetection0357.herokuapp.com/"  target="_blank">here</a> to try the application </b><img src="https://emojis.slackmojis.com/emojis/images/1600706728/10521/meow_code.gif?1600706728" width="25"/> </h2>  
+- <h2><b> Click <a href="https://waferfaultdetection0357.herokuapp.com/"  target="_blank">here</a> to try the application </b><img src="https://emojis.slackmojis.com/emojis/images/1600706728/10521/meow_code.gif?1600706728" width="25"/> </h2>  
 
 - <h2><b> Click <a href="https://hub.docker.com/r/ahmed0357/waferfaultdetection" target="_blank">here</a> to access the docker image </b><img  src="https://img.icons8.com/fluency/344/docker.png" alt="animated" width="25"/> </h2>  
 
